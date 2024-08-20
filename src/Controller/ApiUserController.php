@@ -87,4 +87,17 @@ class ApiUserController extends AbstractController
              ]
         ], JsonResponse::HTTP_OK);
     }
+
+    #[Route('/{id}', name: 'app_api_user_show', methods: ['GET'])]
+    public function show(User $user): JsonResponse
+    {
+        return $this->json($user, 200);
+    }
+
+    #[Route('/{id}/edit', name: 'app_api_user_edit', methods: ['PUT', 'PATCH'])]
+    public function edit(Request $request, User $user, EntityManagerInterface $entityManager, ValidatorInterface $validator): JsonResponse
+
+
+
+
 }
