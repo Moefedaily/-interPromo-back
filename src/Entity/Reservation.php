@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ReservationRepository::class)]
 class Reservation
@@ -16,23 +17,31 @@ class Reservation
     #[ORM\Column]
     private ?int $id = null;
 
+    #[Groups(['api_reservation'])]
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $date = null;
 
+    #[Groups(['api_reservation'])]
     #[ORM\Column(length: 50)]
     private ?string $service = null;
 
+    #[Groups(['api_reservation'])]
     #[ORM\Column]
     private ?int $np_people = null;
 
+    #[Groups(['api_reservation'])]
     #[ORM\ManyToOne(inversedBy: 'reservations')]
     private ?User $user = null;
 
     /**
      * @var Collection<int, Table>
      */
+    #[Groups(['api_reservation'])]
     #[ORM\ManyToMany(targetEntity: Table::class, inversedBy: 'reservations')]
     private Collection $tables;
+
+    #[ORM\Column(length: 50)]
+    private ?string $status = null;
 
     public function __construct()
     {
@@ -112,6 +121,18 @@ class Reservation
     public function removeTable(Table $table): static
     {
         $this->tables->removeElement($table);
+
+        return $this;
+    }
+
+    public function getStatus(): ?string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): static
+    {
+        $this->status = $status;
 
         return $this;
     }
