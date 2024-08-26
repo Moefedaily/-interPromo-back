@@ -15,6 +15,7 @@ class Reservation
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['api_reservation'])]
     private ?int $id = null;
 
     #[Groups(['api_reservation'])]

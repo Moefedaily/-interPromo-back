@@ -80,7 +80,6 @@ class ReservationRepository extends ServiceEntityRepository
     }
     public function countReservedTables(\DateTime $date, string $service): int
     {
-        $this->logger->debug("Counting reserved tables for date: {$date->format('Y-m-d')} and service: {$service}");
 
         $qb = $this->createQueryBuilder('r')
             ->select('COUNT(DISTINCT t.id)')
@@ -92,8 +91,6 @@ class ReservationRepository extends ServiceEntityRepository
 
         $query = $qb->getQuery();
         $count = $query->getSingleScalarResult();
-
-        $this->logger->debug("Reserved tables count: {$count}");
 
         return $count;
     }

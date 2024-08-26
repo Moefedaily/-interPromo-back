@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Meal;
 use App\Repository\MealRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,13 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 #[Route('/api/meal')]
 class ApiMealController extends AbstractController
 {
+    private $logger;
+
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+    
     #[Route('s', name: 'app_api_meal', methods: ['GET'])]
     public function index(MealRepository $mealRepository): Response
     {
@@ -73,17 +81,15 @@ class ApiMealController extends AbstractController
         if (isset($data['name'])) {
             $meal->setName($data['name']);
         }
-
         if (isset($data['description'])) {
             $meal->setDescription($data['description']);
         }
-
         if (isset($data['price'])) {
-            $meal->setPrice($data['price']);
+            $price = floatval($data['price']);
+            $meal->setPrice($price);
         }
-
         if (isset($data['picture'])) {
-            $meal->setPrice($data['picture']);
+            $meal->setPicture($data['picture']); 
         }
 
         $errors = $validator->validate($meal);
@@ -101,6 +107,7 @@ class ApiMealController extends AbstractController
         return new JsonResponse([
             'message' => 'Meal modified successfully',
             'meal' => [
+                'id' => $meal->getId(),
                 'name' => $meal->getName(),
                 'description' => $meal->getDescription(),
                 'price' => $meal->getPrice(),
@@ -109,14 +116,12 @@ class ApiMealController extends AbstractController
         ], JsonResponse::HTTP_CREATED);
 
     }
-
     #[Route('/{id}', name: 'app_api_meal_delete', methods: ['DELETE'])]
-    public function delete(Request $request, Meal $meal, EntityManagerInterface $entityManager): JsonResponse
+    public function delete(Meal $meal, EntityManagerInterface $entityManager): JsonResponse
     {
-            $entityManager->remove($meal);
-            $entityManager->flush();
-            return $this->json(null, 200);
+        $entityManager->remove($meal);
+        $entityManager->flush();
+        return new JsonResponse(['message' => 'Meal deleted successfully'], JsonResponse::HTTP_OK);
     }
-
 
 }
