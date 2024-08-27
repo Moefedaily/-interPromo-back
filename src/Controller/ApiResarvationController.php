@@ -78,48 +78,27 @@ class ApiResarvationController extends AbstractController
 
     
     #[Route('/{id}/edit', name: 'reservation_update', methods: ['PUT', 'PATCH'])]
-    public function update(Request $request, Reservation $reservation, EntityManagerInterface $entityManager, ValidatorInterface $validator, SerializerInterface $serializer): JsonResponse
+    public function update(Request $request, Reservation $reservation, ReservationService $reservationService): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        $this->logger->info('Received update data', ['data' => $data]);
 
-        $serializer->deserialize($request->getContent(), Reservation::class, 'json', [
-            'reservation
-            ' => $reservation,
-            'groups' => 'api_reservation',
-        ]);
+        try {
+            $updatedReservation = $reservationService->updateReservation($reservation, $data);
 
-        if (isset($data['user_id'])) {
-            $user = $entityManager->getRepository(User::class)->find($data['user_id']);
-            if (!$user) {
-                return $this->json(['message' => 'User not found'], Response::HTTP_BAD_REQUEST);
-            }
-            $reservation->setUser($user);
+            $this->logger->info('Reservation updated', [
+                'id' => $updatedReservation->getId(),
+                'npPeople' => $updatedReservation->getNpPeople(),
+                'tables' => $updatedReservation->getTables()->map(fn($table) => $table->getId())->toArray()
+            ]);
+
+            return $this->json($updatedReservation, JsonResponse::HTTP_OK, [], ['groups' => 'api_reservation']);
+        } catch (\Exception $e) {
+            $this->logger->error('Error updating reservation', ['error' => $e->getMessage()]);
+            return $this->json(['error' => 'Failed to update reservation'], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        if (isset($data['table_ids'])) {
-            $reservation->getTables()->clear();
-            foreach ($data['table_ids'] as $tableId) {
-                $table = $entityManager->getRepository(Table::class)->find($tableId);
-                if ($table) {
-                    $reservation->addTable($table);
-                }
-            }
-        }
-
-        $errors = $validator->validate($reservation);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
-            }
-            return $this->json(['message' => 'Validation failed', 'errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
-        }
-
-        $entityManager->flush();
-        
-        return $this->json($reservation, Response::HTTP_OK, [], ['groups' => 'api_reservation']);
     }
-
+    
     #[Route('/{id}', name: 'reservation_delete', methods: ['DELETE'])]
     public function delete(Reservation $reservation, EntityManagerInterface $entityManager): JsonResponse
     {
@@ -143,24 +122,36 @@ class ApiResarvationController extends AbstractController
     #[Route('/check', name: 'check_existing_reservation', methods: ['POST'])]
     public function checkExistingReservation(Request $request, ReservationService $reservationService, EntityManagerInterface $entityManager): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $userId = $data['user_id'] ;
-        $date = new \DateTime($data['date']);
-        $service = $data['service'];
-
-        if (!$userId) {
-            return $this->json(['message' => 'User ID is required'], JsonResponse::HTTP_BAD_REQUEST);
+        try {
+            $data = json_decode($request->getContent(), true);
+            
+            if (!isset($data['user_id']) || !isset($data['date']) || !isset($data['service'])) {
+                return $this->json(['message' => 'Missing required fields'], JsonResponse::HTTP_BAD_REQUEST);
+            }
+    
+            $userId = $data['user_id'];
+            $date = new \DateTime($data['date']);
+            $service = $data['service'];
+    
+            $user = $entityManager->getRepository(User::class)->find($userId);
+            if (!$user) {
+                return $this->json(['message' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+            }
+    
+            $existingReservation = $reservationService->checkExistingReservation($user, $date, $service);
+    
+            if ($existingReservation) {
+                return $this->json([
+                    'exists' => true,
+                    'id' => $existingReservation->getId()
+                ], JsonResponse::HTTP_OK);
+            } else {
+                return $this->json(['exists' => false], JsonResponse::HTTP_OK);
+            }
+        } catch (\Exception $e) {
+            return $this->json(['message' => 'An error occurred: ' . $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $user = $entityManager->getRepository(User::class)->find($userId);
-        if (!$user) {
-            return $this->json(['message' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
         }
-
-        $existingReservation = $reservationService->checkExistingReservation($user, $date, $service);
-
-        return $this->json(['exists' => $existingReservation !== null]);
-    }
     #[Route('/{id}', name: 'reservation_show', methods: ['GET'])]
     public function show(Reservation $reservation): JsonResponse
     {

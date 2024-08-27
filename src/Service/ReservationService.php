@@ -44,11 +44,7 @@ class ReservationService
             if($dateTime < new \DateTime()) {
                 throw new \InvalidArgumentException('Reservation date is in the past.');
             }
-            
-            $existingReservation = $this->checkExistingReservation($reservation->getUser(), $dateTime, $service);
-            if ($existingReservation !== null) {
-                throw new \InvalidArgumentException('You already have a reservation for this date and service.');
-            }
+          
     
             $requiredTables = $this->calculateRequiredTables($npPeople);
             $availableTables = $this->getAvailableTables($dateTime, $service);
@@ -151,4 +147,69 @@ public function checkExistingReservation(User $user, \DateTime $dateTime, string
         return max(0, $availableTables);
     }
 
+
+    public function updateReservation(Reservation $reservation, array $data): ?Reservation
+    {
+        $this->logger->info('Updating reservation', ['id' => $reservation->getId(), 'data' => $data]);
+
+        try {
+            if (isset($data['date'])) {
+                $reservation->setDate(new \DateTime($data['date']));
+            }
+            if (isset($data['service'])) {
+                $reservation->setService($data['service']);
+            }
+            if (isset($data['npPeople'])) {
+                $reservation->setNpPeople((int)$data['npPeople']);
+            }
+
+            $requiredTables = ceil($reservation->getNpPeople() / 2);
+
+            if (isset($data['table_ids'])) {
+                foreach ($reservation->getTables() as $table) {
+                    $reservation->removeTable($table);
+                }
+
+                $addedTables = 0;
+                foreach ($data['table_ids'] as $tableId) {
+                    if ($addedTables >= $requiredTables) {
+                        break;
+                    }
+                    $table = $this->tableRepository->find($tableId);
+                    if ($table) {
+                        $reservation->addTable($table);
+                        $addedTables++;
+                    } else {
+                        $this->logger->warning('Table not found', ['table_id' => $tableId]);
+                    }
+                }
+
+                if ($addedTables < $requiredTables) {
+                    $availableTables = $this->getAvailableTables($reservation->getDate(), $reservation->getService());
+                    foreach ($availableTables as $table) {
+                        if ($addedTables >= $requiredTables) {
+                            break;
+                        }
+                        if (!$reservation->getTables()->contains($table)) {
+                            $reservation->addTable($table);
+                            $addedTables++;
+                        }
+                    }
+                }
+            }
+
+            $this->entityManager->flush();
+
+            $this->logger->info('Reservation updated successfully', [
+                'id' => $reservation->getId(),
+                'npPeople' => $reservation->getNpPeople(),
+                'tables' => $reservation->getTables()->map(fn($table) => $table->getId())->toArray()
+            ]);
+
+            return $reservation;
+        } catch (\Exception $e) {
+            $this->logger->error("Error updating reservation: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }

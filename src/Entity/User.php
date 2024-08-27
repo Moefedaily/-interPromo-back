@@ -18,6 +18,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['api_reservation'])]
     private ?int $id = null;
 
+    #[Groups(['api_reservation'])]
     #[ORM\Column(length: 180)]
     private ?string $mail = null;
 
@@ -37,6 +38,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 50)]
     private ?string $name = null;
 
+    #[Groups([ 'api_reservation'])]
     #[ORM\Column(nullable: true)]
     private ?int $phone = null;
 
