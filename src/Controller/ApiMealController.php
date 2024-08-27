@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 
@@ -25,12 +26,12 @@ class ApiMealController extends AbstractController
     }
     
     #[Route('s', name: 'app_api_meal', methods: ['GET'])]
-    public function index(MealRepository $mealRepository): Response
+    public function index(MealRepository $mealRepository, SerializerInterface $serializer): Response
     {
 
-            $meal = $mealRepository->findAll();
-
-            return $this->json(['meals' => $meal], 200, []);
+        $meals = $mealRepository->findAll();
+        $data = $serializer->serialize($meals, 'json', ['groups' => 'api_meal']);
+        return new JsonResponse($data, 200, [], true);
     }
 
     #[Route('/new', name: 'app_api_meal_new', methods: ['GET', 'POST'])]
@@ -68,9 +69,10 @@ class ApiMealController extends AbstractController
     }
 
     #[Route('/{id}', name: 'app_api_meal_show', methods: ['GET'])]
-    public function show(Meal $meal): JsonResponse
+    public function show(Meal $meal, SerializerInterface $serializer): JsonResponse
     {
-        return $this->json($meal, 200);
+        $data = $serializer->serialize($meal, 'json', ['groups' => 'api_meal']);
+        return new JsonResponse($data, 200, [], true);
     }
 
 

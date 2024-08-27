@@ -162,6 +162,9 @@ public function checkExistingReservation(User $user, \DateTime $dateTime, string
             if (isset($data['npPeople'])) {
                 $reservation->setNpPeople((int)$data['npPeople']);
             }
+            if(isset($data['status'])) {
+                $reservation->setStatus($data['status']);
+            }
 
             $requiredTables = ceil($reservation->getNpPeople() / 2);
 
