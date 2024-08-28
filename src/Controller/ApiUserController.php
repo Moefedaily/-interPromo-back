@@ -87,4 +87,81 @@ class ApiUserController extends AbstractController
              ]
         ], JsonResponse::HTTP_OK);
     }
+
+    #[Route('/logout', name: 'api_logout', methods: ['POST'])]
+    public function logout(): JsonResponse
+    {
+        return new JsonResponse(['message' => 'Logout successful'], JsonResponse::HTTP_OK);
+    }
+
+    #[Route('/users', name: 'api_users', methods: ['GET'])]
+    public function users(EntityManagerInterface $entityManager): JsonResponse
+    {
+        $users = $entityManager->getRepository(User::class)->findAll();
+        $data = [];
+        foreach ($users as $user) {
+            $data[] = [
+                'id' => $user->getId(),
+                'mail' => $user->getMail(),
+                'name' => $user->getName(),
+                'phone' => $user->getPhone(),
+                'isAdmin' => $user->isAdmin()
+            ];
+        }
+        return new JsonResponse($data, 200, [], true);
+    }
+
+    #[Route('/user/{id}', name: 'api_user', methods: ['GET'])]
+    public function user(EntityManagerInterface $entityManager, int $id): JsonResponse
+    {
+        $user = $entityManager->getRepository(User::class)->find($id);
+        if (!$user) {
+            return new JsonResponse(['message' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+        $data = [
+            'id' => $user->getId(),
+            'mail' => $user->getMail(),
+            'name' => $user->getName(),
+            'phone' => $user->getPhone(),
+            'isAdmin' => $user->isAdmin()
+        ];
+        return new JsonResponse($data, 200, [], true);
+    }
+
+    #[Route('/user/{id}/edit', name: 'api_user_update', methods: ['PUT'])]
+    public function updateUser(Request $request, User $user,EntityManagerInterface $entityManager, ValidatorInterface $validator, UserPasswordHasherInterface $passwordHasher): JsonResponse
+    {
+        $user = $entityManager->getRepository(User::class)->find($user->getId());
+        if (!$user) {
+            return new JsonResponse(['message' => 'User not found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        if (isset($data['name'])) {
+            $user->setName($data['name']);
+        }
+        if (isset($data['phone'])) {
+            $user->setPhone($data['phone']);
+        }
+
+        if (isset($data['password'])) {
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
+        }
+
+        $errors = $validator->validate($user);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return new JsonResponse(['message' => 'Validation failed', 'errors' => $errorMessages], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        $entityManager->flush();
+
+        return $this->json($user, JsonResponse::HTTP_OK, []);
+    }
+
 }
