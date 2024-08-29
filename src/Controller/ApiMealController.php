@@ -68,13 +68,7 @@ class ApiMealController extends AbstractController
         ], JsonResponse::HTTP_CREATED);
     }
 
-    #[Route('/{id}', name: 'app_api_meal_show', methods: ['GET'])]
-    public function show(Meal $meal, SerializerInterface $serializer): JsonResponse
-    {
-        $data = $serializer->serialize($meal, 'json', ['groups' => 'api_meal']);
-        return new JsonResponse($data, 200, [], true);
-    }
-
+   
 
     #[Route('/{id}/edit', name: 'app_api_meal_edit', methods: ['PUT', 'PATCH'])]
     public function edit(Request $request, Meal $meal, EntityManagerInterface $entityManager, ValidatorInterface $validator): JsonResponse
@@ -125,5 +119,28 @@ class ApiMealController extends AbstractController
         $entityManager->flush();
         return new JsonResponse(['message' => 'Meal deleted successfully'], JsonResponse::HTTP_OK);
     }
+
+    #[Route('/search', name: 'api_meals_search', methods: ['GET'])]
+    public function search(Request $request, MealRepository $mealRepository): JsonResponse
+    {
+        $categories = $request->query->all()['categories'] ?? [];
+
+        if (!is_array($categories)) {
+            $categories = [$categories];
+        }
+
+        $categoryIds = array_map('intval', $categories);
+
+        $meals = $mealRepository->findByCategories($categoryIds);
+
+        return $this->json($meals, 200, [], ['groups' => 'api_meal']);
+    }
+    #[Route('/{id}', name: 'app_api_meal_show', methods: ['GET'])]
+    public function show(Meal $meal, SerializerInterface $serializer): JsonResponse
+    {
+        $data = $serializer->serialize($meal, 'json', ['groups' => 'api_meal']);
+        return new JsonResponse($data, 200, [], true);
+    }
+
 
 }

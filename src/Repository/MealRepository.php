@@ -40,4 +40,22 @@ class MealRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+    public function findByCategories(array $categoryIds): array
+    {
+        $qb = $this->createQueryBuilder('m');
+
+        if (!empty($categoryIds)) {
+            $qb->join('m.categories', 'c')
+               ->where($qb->expr()->in('c.id', ':categoryIds'))
+               ->setParameter('categoryIds', $categoryIds);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    // SELECT m.*
+    // FROM meals m
+    // JOIN meal_category mc ON m.id = mc.meal_id
+    // JOIN categories c ON mc.category_id = c.id
+    // WHERE c.id IN (:categoryIds)
 }
