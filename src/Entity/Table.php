@@ -6,6 +6,7 @@ use App\Repository\TableRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: TableRepository::class)]
 #[ORM\Table(name: '`table`')]
@@ -14,13 +15,16 @@ class Table
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['api_reservation'])]
     private ?int $id = null;
 
     #[ORM\Column]
+    #[Groups(['api_reservation'])]
     private ?int $table_number = null;
 
     #[ORM\Column]
-    private ?int $capacity = null;
+    #[Groups(['api_reservation'])]
+    private int $capacity = 2;
 
     /**
      * @var Collection<int, Reservation>
